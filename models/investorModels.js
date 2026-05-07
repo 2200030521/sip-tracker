@@ -1,0 +1,115 @@
+import db from "../config/db.js";
+
+export function addInvestorFromDB(data) {
+    return new Promise((resolve, reject) => {
+        const {first_name,last_name,email,phone,pan_number} = data;
+        db.run(
+            ` INSERT INTO investors(first_name,last_name,email,phone,pan_number)
+            VALUES (?, ?, ?, ?, ?)
+            `,
+            [first_name,last_name,email,phone,pan_number],
+            function(err) {
+                if(err) {
+                    reject({error: err.message,message: 'Error adding investor'
+                    });
+                } else {
+                    resolve({message: 'Investor added successfully',investor_id: this.lastID});
+                }
+            }
+        );
+    });
+}
+
+export function getAllInvestorsFromDB() {
+    return new Promise((resolve, reject) => {
+        db.all(
+            `SELECT * FROM investors ORDER BY investor_id DESC `,[],
+            (err, rows) => {
+                if(err) {
+                    reject({error: err.message,message: 'Error fetching investors'});
+                } else {
+                    resolve(rows);
+                }
+            }
+        );
+    });
+}
+
+export function getAInvestorFromDB(id) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            `SELECT * FROM investors WHERE investor_id = ? `,[id],
+            (err, row) => {
+                if(err) {
+                    reject({error: err.message,message: 'Error fetching investor'});
+                } else {
+                    resolve(row);
+                }
+          }
+        );
+    });
+}
+export function investorHoldingsFromDB(id) {
+    return new Promise((resolve, reject) => {
+        db.all(
+            `SELECT mf.fund_name, SUM(it.units_allocated) AS total_units,mf.latest_nav,
+                ROUND(SUM(it.units_allocated) * mf.latest_nav,2) AS current_value
+            FROM investment_transactions it
+            JOIN mutual_funds mf
+            ON it.fund_id = mf.fund_id
+            WHERE it.investor_id = ?
+            GROUP BY mf.fund_id
+            `,[id],
+            (err, rows) => {
+                if(err) {
+                    reject({error: err.message,message: 'Error fetching holdings'});
+                } else {
+                    resolve(rows);
+                }
+            }
+        );
+    });
+}
+
+export function totalInvestmentOfUserFromDB(id) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            `SELECT i.investor_id,i.first_name,i.last_name,
+             ROUND(SUM(it.units_allocated * mf.latest_nav),2) AS net_worth
+            FROM investors i
+            JOIN investment_transactions it
+            ON i.investor_id = it.investor_id
+            JOIN mutual_funds mf
+            ON it.fund_id = mf.fund_id
+            WHERE i.investor_id = ?
+            GROUP BY i.investor_id
+            `,[id],
+            (err, row) => {
+                if(err) {
+                    reject({
+                        error: err.message,
+                        message: 'Error calculating net worth'
+                    });
+                } else {
+                    resolve(row);
+                }
+            }
+        );
+    });
+}
+
+const users=[
+    {email:'hema@gmail.com',
+        password:"hema",
+        role:"user",
+        loggedIn:false,
+    }
+]
+
+export function loginUser(email,password){
+    const userIndex=users.findIndex((u)=>u.email==email && u.password==password);
+    if(userIndex!=-1){
+        users[userIndex]={...users[userIndex],loggedIn:true};
+    }
+    return users[userIndex];
+}
