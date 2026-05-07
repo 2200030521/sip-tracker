@@ -31,6 +31,7 @@ const authentication=(req,res,next)=>{
 investorRoute.post('/',createInvestor);
  investorRoute.get('/',getAllInvestors);
 investorRoute.get('/:id',getAInvestor);
+//below are not yet done 
 investorRoute.get('/:id/holdings',investorHoldings);
 investorRoute.get('/:id/net',totalInvestmentOfUser); 
 

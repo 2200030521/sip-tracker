@@ -16,7 +16,9 @@ export const getFunds = async (req, res) => {
 
 export const updateFundNAV = async (req, res) => {
   const { fundId } = req.params;
+  //console.log(req.body);
   const { latest_nav } = req.body;
+  //console.log(fundId+" "+latest_nav);
   const result = await updateFundNAVFromDB(fundId, latest_nav);
   return res.json(result);
 };

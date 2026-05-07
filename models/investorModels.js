@@ -23,7 +23,7 @@ export function addInvestorFromDB(data) {
 export function getAllInvestorsFromDB() {
     return new Promise((resolve, reject) => {
         db.all(
-            `SELECT * FROM investors ORDER BY investor_id DESC `,[],
+            `SELECT * FROM investors ORDER BY investor_id  `,[],
             (err, rows) => {
                 if(err) {
                     reject({error: err.message,message: 'Error fetching investors'});
@@ -51,50 +51,53 @@ export function getAInvestorFromDB(id) {
 }
 export function investorHoldingsFromDB(id) {
     return new Promise((resolve, reject) => {
-        db.all(
-            `SELECT mf.fund_name, SUM(it.units_allocated) AS total_units,mf.latest_nav,
-                ROUND(SUM(it.units_allocated) * mf.latest_nav,2) AS current_value
-            FROM investment_transactions it
+        const query = `
+            SELECT mf.fund_id,mf.fund_name,
+                ROUND(COALESCE(SUM(it.units_allocated), 0),4) AS total_units,
+                COALESCE(mf.latest_nav, 0) AS latest_nav,
+                ROUND(
+                    COALESCE(SUM(it.units_allocated), 0) *
+                    COALESCE(mf.latest_nav, 0),2) AS current_value
+                    FROM investment_transactions it
             JOIN mutual_funds mf
             ON it.fund_id = mf.fund_id
             WHERE it.investor_id = ?
-            GROUP BY mf.fund_id
-            `,[id],
-            (err, rows) => {
-                if(err) {
-                    reject({error: err.message,message: 'Error fetching holdings'});
-                } else {
-                    resolve(rows);
-                }
+            GROUP BY mf.fund_id, mf.fund_name
+        `;
+        db.all(query, [id], (err, rows) => {
+            if (err) {
+                reject({error: err.message,message: "Error fetching holdings"});
+            } else {
+               resolve(rows);
             }
-        );
+        });
     });
 }
 
 export function totalInvestmentOfUserFromDB(id) {
     return new Promise((resolve, reject) => {
-        db.get(
-            `SELECT i.investor_id,i.first_name,i.last_name,
-             ROUND(SUM(it.units_allocated * mf.latest_nav),2) AS net_worth
+        const query = `
+            SELECT i.investor_id,i.first_name,i.last_name,
+                ROUND(
+                    COALESCE(
+                        SUM(
+                            COALESCE(it.units_allocated, 0) *
+                            COALESCE(mf.latest_nav, 0)),0),2) AS net_worth
             FROM investors i
-            JOIN investment_transactions it
+            LEFT JOIN investment_transactions it
             ON i.investor_id = it.investor_id
-            JOIN mutual_funds mf
+            LEFT JOIN mutual_funds mf
             ON it.fund_id = mf.fund_id
             WHERE i.investor_id = ?
-            GROUP BY i.investor_id
-            `,[id],
-            (err, row) => {
-                if(err) {
-                    reject({
-                        error: err.message,
-                        message: 'Error calculating net worth'
-                    });
-                } else {
-                    resolve(row);
-                }
+            GROUP BY i.investor_id,i.first_name,i.last_name
+        `;
+        db.get(query, [id], (err, row) => {
+            if (err) {
+                reject({error: err.message,message: "Error calculating net worth"});
+            } else {
+                resolve(row);
             }
-        );
+        });
     });
 }
 

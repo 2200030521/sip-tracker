@@ -46,6 +46,7 @@ export function updateFundNAVFromDB(fundId, latest_nav) {
         if (err) {
           reject({ error: err.message });
         } else {
+          //console.log(latest_nav+" "+fundId);
           resolve({ message: 'NAV updated' });
         }
       }
